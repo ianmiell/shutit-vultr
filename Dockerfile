@@ -24,4 +24,4 @@ RUN make build
 WORKDIR /root
 RUN git clone https://github.com/ianmiell/vultr-bare-metal
 WORKDIR /root/vultr-bare-metal
-RUN terraform init -plugin-dir /usr/local/go/bin/
+CMD bash
