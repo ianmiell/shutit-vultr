@@ -20,11 +20,8 @@ WORKDIR /usr/local/go/src/github.com/vultr
 RUN git clone https://github.com/vultr/terraform-provider-vultr
 WORKDIR /usr/local/go/src/github.com/vultr/terraform-provider-vultr
 RUN make build
-RUN ln -s /usr/local/go/bin/terraform-provider-vultr ~/.terraform.d/plugins/terraform-provider-vultr
+#RUN ln -s /usr/local/go/bin/terraform-provider-vultr ~/.terraform.d/plugins/terraform-provider-vultr
 WORKDIR /root
 RUN git clone https://github.com/ianmiell/vultr-bare-metal
 WORKDIR /root/vultr-bare-metal
-RUN terraform init
-
-
-
+RUN terraform init -plugin-dir /usr/local/go/bin/
