@@ -8,11 +8,11 @@ except:
 	print('VULTR_API_KEY must be set in the environment')
 	sys.exit(1)
 
-s = shutit.create_session(docker_image='imiell/vultr-bare-metal', docker_rm=True, loglevel='INFO', session_type='docker')
+s = shutit.create_session(loglevel='DEBUG', session_type='bash')
+s.login('docker run -ti imiell/vultr-bare-metal bash')
 s.send('export TF_VAR_token=' + api_key)
-s.send('terraform init -plugin-dir /usr/local/go/bin')
-output = s.send_and_get_output('terraform apply')
 s.pause_point()
+output = s.send_and_get_output('terraform apply')
 # TODO extract IP address from output
 #ip_address =
 #s.login(command='ssh root@' + ip_address, password='vultr')
