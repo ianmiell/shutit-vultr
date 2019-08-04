@@ -44,7 +44,6 @@ def setup_minishift(s):
 def do_knative(s, ip_address, vultr_password):
 	s.send('cd /root/shutit-minikube/')
 	s.send('./run.sh knative')
-	s.pause_point('knative set up and ready to use at: ' + ip_address + ', with root password: ' + vultr_password)
 
 def do_knative_serving_example(s):
 	## Hello world: https://koudingspawn.de/knative-serving/
@@ -63,7 +62,6 @@ def do_knative_serving_example(s):
 	s.send('mc mb minio/images')
 	s.send('mc mb minio/thumbnail')
 	s.send('mc event add minio/images arn:minio:sqs::1:webhook --event put --suffix .jpg')
-	s.pause_point('mc ls minio/thumbnail')
 
 
 q = 'Please choose an env to build'
@@ -77,11 +75,13 @@ if env_option == 'knative':
 	ip_address = core_setup(s=s, vultr_password=vultr_password)
 	setup_minikube(s)
 	do_knative(s=s, ip_address=ip_address, vultr_password=vultr_password)
+	s.pause_point('knative set up and ready to use at: ' + ip_address + ', with root password: ' + vultr_password)
 	q = 'Please choose an acitvity to perform'
 	knative_options = ['knative_serving_example',]
 	knative_option, _ = pick.pick(knative_options, q)
 	if knative_option == 'knative_serving_example':
 		do_knative_serving_example(s)
+		s.pause_point('mc ls minio/thumbnail')
 	s.logout()
 	s.logout()
 
