@@ -5,7 +5,7 @@ help:
 .PHONY: help run access build container_run backup restore check_host check_container check_nodiff
 
 run:
-	python run.py
+	./run.sh
 
 build:
 	./build.sh
