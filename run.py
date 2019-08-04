@@ -65,6 +65,7 @@ def do_knative_serving_example(s):
 q = 'Please choose an env to build'
 env_options = ['knative',]
 env_option, _ = pick.pick(env_options, q)
+final_msg = ''
 
 s = shutit.create_session(loglevel='DEBUG', session_type='bash', echo=True)
 if env_option == 'knative':
@@ -72,12 +73,13 @@ if env_option == 'knative':
 	ip_address = core_setup(s=s, vultr_password=vultr_password)
 	setup_minikube(s)
 	do_knative(s=s, ip_address=ip_address, vultr_password=vultr_password)
+	final_msg += 'knative set up and ready to use at: ' + ip_address + ', with root password: ' + vultr_password
 	q = 'Please choose an activity to perform'
 	knative_options = ['knative_serving_example',]
 	knative_option, _ = pick.pick(knative_options, q)
 	if knative_option == 'knative_serving_example':
 		do_knative_serving_example(s)
-		s.pause_point('mc ls minio/thumbnail')
+	s.pause_point(final_msg)
 	s.logout()
 	s.logout()
 
