@@ -1,2 +1,2 @@
 #!/bin/bash
-python run.sh
+python run.py
