@@ -9,7 +9,6 @@ except:
 	print('VULTR_API_KEY must be set in the environment')
 	sys.exit(1)
 
-
 def core_setup(s, vultr_password):
 	s.login(command='docker run -ti imiell/vultr-bare-metal bash')
 	# regions baremetal is available: https://www.vultr.com/api/#plans_plan_list_baremetal
@@ -63,20 +62,17 @@ def do_knative_serving_example(s):
 	s.send('mc mb minio/thumbnail')
 	s.send('mc event add minio/images arn:minio:sqs::1:webhook --event put --suffix .jpg')
 
-
 q = 'Please choose an env to build'
 env_options = ['knative',]
 env_option, _ = pick.pick(env_options, q)
 
-
-s = shutit.create_session(loglevel='INFO', session_type='bash', echo=True)
+s = shutit.create_session(loglevel='DEBUG', session_type='bash', echo=True)
 if env_option == 'knative':
 	vultr_password = 'vultr0987'
 	ip_address = core_setup(s=s, vultr_password=vultr_password)
 	setup_minikube(s)
 	do_knative(s=s, ip_address=ip_address, vultr_password=vultr_password)
-	s.pause_point('knative set up and ready to use at: ' + ip_address + ', with root password: ' + vultr_password)
-	q = 'Please choose an acitvity to perform'
+	q = 'Please choose an activity to perform'
 	knative_options = ['knative_serving_example',]
 	knative_option, _ = pick.pick(knative_options, q)
 	if knative_option == 'knative_serving_example':
