@@ -58,13 +58,20 @@ def install_kustomize(s):
 	s.send('mv kustomize_*_${opsys}_amd64 /usr/bin/local/kustomize')
 	s.send('chmod u+x /usr/bin/local/kustomize')
 
-def install_ko(s):
+def install_go(s):
 	s.send('cd /root')
     s.send('wget https://dl.google.com/go/go1.12.7.linux-amd64.tar.gz')
     s.send('tar -xvf go1.12.7.linux-amd64.tar.gz')
     s.send('rm -f go1.12.7.linux-amd64.tar.gz')
 	s.send('export PATH=${PATH}:/root/go/bin')
 	s.send('''echo 'export PATH=${PATH}:/root/go/bin' >> /root/.bashrc''')
+
+def install_kn(s):
+	install_go(s)
+	s.send('go get https://github.com/knative/client')
+
+def install_ko(s):
+	install_go(s)
 	s.send('go get github.com/google/go-containerregistry/cmd/ko')
 
 def install_knctl(s):
