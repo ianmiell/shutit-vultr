@@ -21,7 +21,7 @@ def core_setup(s, vultr_password):
 	s.send('sleep 120')
 	s.login(command='ssh root@' + ip_address, password=vultr_password)
 	s.send('apt-get upgrade -y')
-	s.send('apt-get install -y python-pip build-essential virtualbox tmux mc vim')
+	s.send('apt-get install -y python-pip build-essential virtualbox tmux vim')
 	s.send('apt-get autoremove -y')
 	s.send('pip install setuptools')
 	s.send('pip install wheel')
@@ -46,10 +46,30 @@ def do_knative(s, ip_address, vultr_password):
 	s.send('./run.sh knative')
 	s.pause_point('knative set up and ready to use at: ' + ip_address + ', with root password: ' + vultr_password)
 
+def do_knative_serving_example(s):
+	## Hello world: https://koudingspawn.de/knative-serving/
+	## Minio client
+	s.send('cd /root')
+	s.send('wget https://dl.min.io/client/mc/release/linux-amd64/mc && chmod +x mc && mv mc /usr/local/bin/mc')
+	s.send('git clone https://gitlab.com/koudingspawn-public/knative/simple-serving-hello')
+	s.send('cd simple-serving-hello')
+	s.send('#kubectl apply -f kubernetes/serving.yaml')
+	s.send_until('kubectl get ksvc -n simple-serving | grep  http://simple-serving-java.simple-serving.example.com | grep True | wc -l', '1')
+	s.send('kubectl apply -f kubernetes/allow-minio.yaml')
+	s.send('kubectl apply -f minio/deployment.yaml')
+	minio_podname = s.send("kubectl get pods -n minio | grep minio | awk '{print $1}'")
+	s.send('kubectl port-forward -n minio pod/' + MINIO_PODNAME + '9000:9000 &')
+	s.send('mc config host add minio http://120.0.0.1:9000 minio minio123')
+	s.send('mc mb minio/images')
+	s.send('mc mb minio/thumbnail')
+	s.send('mc event add minio/images arn:minio:sqs::1:webhook --event put --suffix .jpg')
+	s.pause_point('mc ls minio/thumbnail')
+
 
 q = 'Please choose an env to build'
 env_options = ['knative',]
 env_option, _ = pick.pick(env_options, q)
+
 
 s = shutit.create_session(loglevel='INFO', session_type='bash', echo=True)
 if env_option == 'knative':
@@ -57,21 +77,13 @@ if env_option == 'knative':
 	ip_address = core_setup(s=s, vultr_password=vultr_password)
 	setup_minikube(s)
 	do_knative(s=s, ip_address=ip_address, vultr_password=vultr_password)
+	q = 'Please choose an acitvity to perform'
+	knative_options = ['knative_serving_example',]
+	knative_option, _ = pick.pick(knative_options, q)
+	if knative_option == 'knative_serving_example':
+		do_knative_serving_example(s)
 	s.logout()
 	s.logout()
-
-# Hello world: https://koudingspawn.de/knative-serving/
-#git clone https://gitlab.com/koudingspawn-public/knative/simple-serving-hello
-#cd simple-serving-hello
-# kubectl get ksvc -n simple-serving | grep  http://simple-serving-java.simple-serving.example.com | grep True | wc -l <= send until 1
-#kubectl apply -f kubernetes/allow-minio.yaml
-#kubectl apply -f minio/deployment.yaml
-#MINIO_PODNAME = kubectl get pods -n minio | grep minio | awk '{print $1}'
-#kubectl port-forward -n minio pod/MINIO_PODNAME 9000:9000 &
-#mc config host add minio http://120.0.0.1:9000 minio minio123
-#mc mb minio/images
-#mc mb minio/thumbnail
-#mc event add minio/images arn:minio:sqs::1:webhook --event put --suffix .jpg
 
 # Get an image?
 # wget https://sample-videos.com/img/Sample-jpg-image-50kb.jpg
