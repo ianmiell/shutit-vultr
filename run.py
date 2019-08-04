@@ -3,12 +3,7 @@ import shutit
 import sys
 import pick
 
-try:
-	api_key = os.environ['VULTR_API_KEY']
-except:
-	print('VULTR_API_KEY must be set in the environment')
-	sys.exit(1)
-
+## BEGIN CORE SETUP
 def core_setup(s, vultr_password):
 	s.login(command='docker run -ti imiell/vultr-bare-metal bash')
 	# regions baremetal is available: https://www.vultr.com/api/#plans_plan_list_baremetal
@@ -27,23 +22,60 @@ def core_setup(s, vultr_password):
 	s.send('pip install shutit pygithub')
 	s.send('''echo 'export PATH=$PATH:/root/bin' >> /root/.bashrc''')
 	return ip_address
+## END CORE SETUP
 
-def setup_minikube(s):
+## BEGIN INSTALLS
+def install_knative(s, ip_address, vultr_password):
+	s.send('cd /root/shutit-minikube/')
+	s.send('./run.sh knative')
+
+def install_minikube(s):
 	s.send('cd /root')
 	s.send('curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64 && chmod +x minikube && mv minikube /usr/local/bin')
 	s.send('git clone https://github.com/ianmiell/shutit-minikube')
 	s.send('''(cd shutit-minikube && touch secret && git submodule init && git submodule update)''')
 
-def setup_minishift(s):
+def install_minishift(s):
 	s.send('cd /root')
 	# TODO download minishift
 	s.send('git clone https://github.com/ianmiell/shutit-minishift')
 	s.send('''(cd shutit-minishift && touch secret && git submodule init && git submodule update)''')
 
-def do_knative(s, ip_address, vultr_password):
-	s.send('cd /root/shutit-minikube/')
-	s.send('./run.sh knative')
 
+def install_kubebuilder(s):
+	# https://book.kubebuilder.io/quick-start.html#installation
+	s.send('cd /root')
+	s.send('curl -sL https://go.kubebuilder.io/dl/2.0.0-beta.0/${os}/${arch} | tar -xz -C /tmp/')
+	s.send('mv /tmp/kubebuilder_2.0.0-beta.0_${os}_${arch} /usr/local/kubebuilder')
+	s.send('export PATH=$PATH:/usr/local/kubebuilder/bin')
+	s.send('''echo 'export PATH=$PATH:/usr/local/kubebuilder/bin' >> /root/.bashrc''')
+
+def install_kustomize(s):
+	# https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md
+	s.send('cd /root')
+	s.send('opsys=linux')  # or darwin, or windows
+	s.send('''curl -s https://api.github.com/repos/kubernetes-sigs/kustomize/releases/latest | grep browser_download | grep $opsys |cut -d '"' -f 4 | xargs curl -O -L''')
+	s.send('mv kustomize_*_${opsys}_amd64 /usr/bin/local/kustomize')
+	s.send('chmod u+x /usr/bin/local/kustomize')
+
+def install_ko(s):
+	s.send('cd /root')
+    s.send('wget https://dl.google.com/go/go1.12.7.linux-amd64.tar.gz')
+    s.send('tar -xvf go1.12.7.linux-amd64.tar.gz')
+    s.send('rm -f go1.12.7.linux-amd64.tar.gz')
+	s.send('export PATH=${PATH}:/root/go/bin')
+	s.send('''echo 'export PATH=${PATH}:/root/go/bin' >> /root/.bashrc''')
+	s.send('go get github.com/google/go-containerregistry/cmd/ko')
+
+def install_knctl(s):
+#https://github.com/cppforlife/knctl
+	s.send('cd /root')
+	s.send('git clone https://github.com/cppforlife/knctl')
+	s.send('cd knctl')
+	s.send('./hack/build.sh')
+## INSTALLS DONE
+
+## BEGIN ACTIVITIES
 def do_knative_serving_example(s):
 	## Hello world: https://koudingspawn.de/knative-serving/
 	## Minio client
@@ -61,28 +93,48 @@ def do_knative_serving_example(s):
 	s.send('mc mb minio/images')
 	s.send('mc mb minio/thumbnail')
 	s.send('mc event add minio/images arn:minio:sqs::1:webhook --event put --suffix .jpg')
+## ACTIVITIES DONE
 
-q = 'Please choose an env to build'
-env_options = ['knative',]
-env_option, _ = pick.pick(env_options, q)
-final_msg = ''
+## HANDLERS BEGIN
+def handle_knative(s, ip_address, vultr_password):
+		setup_minikube(s)
+		install_knative(s=s, ip_address=ip_address, vultr_password=vultr_password)
+		final_msg += 'knative set up and ready to use at: ' + ip_address + ', with root password: ' + vultr_password
+		q = 'Please choose an activity to perform'
+		knative_options = ['knative_serving_example',]
+		knative_option, _ = pick.pick(knative_options, q)
+		if knative_option == 'knative_serving_example':
+			do_knative_serving_example(s)
+		s.pause_point(final_msg)
+## HANDLERS DONE
 
-s = shutit.create_session(loglevel='DEBUG', session_type='bash', echo=True)
-if env_option == 'knative':
+## MAIN BEGIN
+def main():
+	# Pre-req check
+	try:
+		api_key = os.environ['VULTR_API_KEY']
+	except:
+		print('VULTR_API_KEY must be set in the environment')
+		sys.exit(1)
+	# Constants
 	vultr_password = 'vultr0987'
+	# Main choices begin
+	q = 'Please choose an env to build'
+	env_options = ['knative',]
+	env_option, _ = pick.pick(env_options, q)
+	final_msg = ''
+
+	# Create bash shell
+	s = shutit.create_session(loglevel='DEBUG', session_type='bash', echo=True)
 	ip_address = core_setup(s=s, vultr_password=vultr_password)
-	setup_minikube(s)
-	do_knative(s=s, ip_address=ip_address, vultr_password=vultr_password)
-	final_msg += 'knative set up and ready to use at: ' + ip_address + ', with root password: ' + vultr_password
-	q = 'Please choose an activity to perform'
-	knative_options = ['knative_serving_example',]
-	knative_option, _ = pick.pick(knative_options, q)
-	if knative_option == 'knative_serving_example':
-		do_knative_serving_example(s)
-	s.pause_point(final_msg)
+
+	# Process choices
+	if env_option == 'knative':
+		handle_knative(s, ip_address, vultr_password)
+
+	# Clean up from core setup.
 	s.logout()
 	s.logout()
+## MAIN DONE
 
-# Get an image?
-# wget https://sample-videos.com/img/Sample-jpg-image-50kb.jpg
-
+main()
