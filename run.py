@@ -1,6 +1,7 @@
 import os
 import shutit
 import sys
+import pick
 
 try:
 	api_key = os.environ['VULTR_API_KEY']
@@ -40,19 +41,24 @@ def setup_minishift(s):
 	s.send('git clone https://github.com/ianmiell/shutit-minishift')
 	s.send('''(cd shutit-minishift && touch secret && git submodule init && git submodule update)''')
 
-def do_knative(s, ip_address, vultr_password)
+def do_knative(s, ip_address, vultr_password):
 	s.send('cd /root/shutit-minikube/')
 	s.send('./run.sh knative')
 	s.pause_point('knative set up and ready to use at: ' + ip_address + ', with root password: ' + vultr_password)
 
 
-vultr_password = 'vultr0987'
+q = 'Please choose an env to build'
+env_options = ['knative',]
+env_option, _ = pick.pick(env_options, q)
+
 s = shutit.create_session(loglevel='INFO', session_type='bash', echo=True)
-ip_address = core_setup(s=s, vultr_password=vultr_password)
-setup_minikube(s)
-do_knative(s=s, ip_address=ip_address, vultr_password=vultr_password)
-s.logout()
-s.logout()
+if env_option == 'knative':
+	vultr_password = 'vultr0987'
+	ip_address = core_setup(s=s, vultr_password=vultr_password)
+	setup_minikube(s)
+	do_knative(s=s, ip_address=ip_address, vultr_password=vultr_password)
+	s.logout()
+	s.logout()
 
 # Hello world: https://koudingspawn.de/knative-serving/
 #git clone https://gitlab.com/koudingspawn-public/knative/simple-serving-hello
