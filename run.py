@@ -10,7 +10,7 @@ except:
 
 vultr_password = 'vultr0987'
 
-s = shutit.create_session(loglevel='INFO', session_type='bash')
+s = shutit.create_session(loglevel='INFO', session_type='bash', echo=True)
 s.login(command='docker run -ti imiell/vultr-bare-metal bash')
 # regions baremetal is available: https://www.vultr.com/api/#plans_plan_list_baremetal
 available_region = s.send_and_get_output('''curl -s https://api.vultr.com/v1/plans/list_baremetal | jq '.["100"]["available_locations"][]' | head -1''')
