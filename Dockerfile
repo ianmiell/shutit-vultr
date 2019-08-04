@@ -24,5 +24,4 @@ RUN apt-get update -y && \
 	rm -rf /root/go/pkg/ /root/go/src /root/.cache && \
 	apt purge -y build-essential unzip && \
 	apt autoremove -y
-
 CMD bash
