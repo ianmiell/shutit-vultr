@@ -17,7 +17,7 @@ available_region = s.send_and_get_output('''curl -s https://api.vultr.com/v1/pla
 s.send('export TF_VAR_token=' + api_key)
 s.send('cd vultr-bare-metal')
 s.send('git pull')
-output = s.send_and_get_output("terraform apply -auto-approve -no-color -var 'vultr_bm_region=" + available_region + "' | grep '^ip' | awk '{print $3}'")
+ip_address = s.send_and_get_output("terraform apply -auto-approve -no-color -var 'vultr_bm_region=" + available_region + "' | grep '^ip' | awk '{print $3}'")
 s.send('sleep 120')
 s.login(command='ssh root@' + ip_address, password=vultr_password)
 s.send('git clone https://github.com/ianmiell/shutit-minishift')
