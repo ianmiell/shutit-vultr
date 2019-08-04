@@ -20,5 +20,9 @@ RUN apt-get update -y && \
 	cd /root && \
 	git clone https://github.com/ianmiell/vultr-bare-metal && \
 	cd /root/vultr-bare-metal && \
-	terraform init -plugin-dir /root/go/bin
+	terraform init -plugin-dir /root/go/bin && \
+	rm -rf /root/go/pkg/ /root/go/src /root/.cache && \
+	apt purge -y build-essential unzip && \
+	apt autoremove -y
+
 CMD bash
