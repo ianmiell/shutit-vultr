@@ -8,31 +8,65 @@ except:
 	print('VULTR_API_KEY must be set in the environment')
 	sys.exit(1)
 
-vultr_password = 'vultr0987'
 
+def core_setup(s, vultr_password):
+	s.login(command='docker run -ti imiell/vultr-bare-metal bash')
+	# regions baremetal is available: https://www.vultr.com/api/#plans_plan_list_baremetal
+	available_region = s.send_and_get_output('''curl -s https://api.vultr.com/v1/plans/list_baremetal | jq '.["100"]["available_locations"][]' | head -1''')
+	s.send('export TF_VAR_token=' + api_key)
+	s.send('cd vultr-bare-metal')
+	s.send('git pull')
+	ip_address = s.send_and_get_output("terraform apply -auto-approve -no-color -var 'vultr_bm_region=" + available_region + "' | grep '^ip' | awk '{print $3}'")
+	s.send('sleep 120')
+	s.login(command='ssh root@' + ip_address, password=vultr_password)
+	s.send('apt-get upgrade -y')
+	s.send('apt-get install -y python-pip build-essential virtualbox tmux mc vim')
+	s.send('apt-get autoremove -y')
+	s.send('pip install setuptools')
+	s.send('pip install wheel')
+	s.send('pip install shutit pygithub')
+	s.send('''echo 'export PATH=$PATH:/root/bin' >> /root/.bashrc''')
+	return ip_address
+
+def setup_minikube(s):
+	s.send('cd /root')
+	s.send('curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64 && chmod +x minikube && mv minikube /usr/local/bin')
+	s.send('git clone https://github.com/ianmiell/shutit-minikube')
+	s.send('''(cd shutit-minikube && touch secret && git submodule init && git submodule update)''')
+
+def setup_minishift(s):
+	s.send('cd /root')
+	# TODO download minishift
+	s.send('git clone https://github.com/ianmiell/shutit-minishift')
+	s.send('''(cd shutit-minishift && touch secret && git submodule init && git submodule update)''')
+
+def do_knative(s, ip_address, vultr_password)
+	s.send('cd /root/shutit-minikube/')
+	s.send('./run.sh knative')
+	s.pause_point('knative set up and ready to use at: ' + ip_address + ', with root password: ' + vultr_password)
+
+
+vultr_password = 'vultr0987'
 s = shutit.create_session(loglevel='INFO', session_type='bash', echo=True)
-s.login(command='docker run -ti imiell/vultr-bare-metal bash')
-# regions baremetal is available: https://www.vultr.com/api/#plans_plan_list_baremetal
-available_region = s.send_and_get_output('''curl -s https://api.vultr.com/v1/plans/list_baremetal | jq '.["100"]["available_locations"][]' | head -1''')
-s.send('export TF_VAR_token=' + api_key)
-s.send('cd vultr-bare-metal')
-s.send('git pull')
-ip_address = s.send_and_get_output("terraform apply -auto-approve -no-color -var 'vultr_bm_region=" + available_region + "' | grep '^ip' | awk '{print $3}'")
-s.send('sleep 120')
-s.login(command='ssh root@' + ip_address, password=vultr_password)
-s.send('git clone https://github.com/ianmiell/shutit-minishift')
-s.send('git clone https://github.com/ianmiell/shutit-minikube')
-s.send('''(cd shutit-minishift && touch secret && git submodule init && git submodule update)''')
-s.send('''(cd shutit-minikube && touch secret && git submodule init && git submodule update)''')
-s.send('apt upgrade -y')
-s.send('apt install -y python-pip build-essential virtualbox tmux')
-s.send('pip install setuptools')
-s.send('pip install wheel')
-s.send('pip install shutit pygithub')
-s.send('curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64   && chmod +x minikube && mv minikube /usr/local/bin')
-s.send('''echo 'export PATH=$PATH:/root/bin' >> /root/.bashrc''')
-s.send('cd shutit-minikube/')
-s.send('./run.sh knative')
-s.pause_point('knative set up and ready to use at: ' + ip_address + ', with root password: ' + vultr_password)
+ip_address = core_setup(s=s, vultr_password=vultr_password)
+setup_minikube(s)
+do_knative(s=s, ip_address=ip_address, vultr_password=vultr_password)
 s.logout()
 s.logout()
+
+# Hello world: https://koudingspawn.de/knative-serving/
+#git clone https://gitlab.com/koudingspawn-public/knative/simple-serving-hello
+#cd simple-serving-hello
+# kubectl get ksvc -n simple-serving | grep  http://simple-serving-java.simple-serving.example.com | grep True | wc -l <= send until 1
+#kubectl apply -f kubernetes/allow-minio.yaml
+#kubectl apply -f minio/deployment.yaml
+#MINIO_PODNAME = kubectl get pods -n minio | grep minio | awk '{print $1}'
+#kubectl port-forward -n minio pod/MINIO_PODNAME 9000:9000 &
+#mc config host add minio http://120.0.0.1:9000 minio minio123
+#mc mb minio/images
+#mc mb minio/thumbnail
+#mc event add minio/images arn:minio:sqs::1:webhook --event put --suffix .jpg
+
+# Get an image?
+# wget https://sample-videos.com/img/Sample-jpg-image-50kb.jpg
+
