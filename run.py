@@ -35,6 +35,7 @@ def core_setup(s, vultr_password, api_key):
 def install_knative(s, ip_address, vultr_password):
 	s.send('cd /root/shutit-minikube/')
 	s.send('./run.sh knative')
+	s.send('minishift kubectl')
 
 def install_minikube(s):
 	s.send('cd /root')
@@ -97,13 +98,13 @@ def do_knative_serving_example(s):
 	s.send('wget https://dl.min.io/client/mc/release/linux-amd64/mc && chmod +x mc && mv mc /usr/local/bin/mc')
 	s.send('git clone https://gitlab.com/koudingspawn-public/knative/simple-serving-hello')
 	s.send('cd simple-serving-hello')
-	s.send('#kubectl apply -f kubernetes/serving.yaml')
+	s.send('kubectl apply -f kubernetes/serving.yaml')
 	s.send_until('kubectl get ksvc -n simple-serving | grep  http://simple-serving-java.simple-serving.example.com | grep True | wc -l', '1')
 	s.send('kubectl apply -f kubernetes/allow-minio.yaml')
 	s.send('kubectl apply -f minio/deployment.yaml')
 	minio_podname = s.send("kubectl get pods -n minio | grep minio | awk '{print $1}'")
 	s.send('kubectl port-forward -n minio pod/' + MINIO_PODNAME + '9000:9000 &')
-	s.send('mc config host add minio http://120.0.0.1:9000 minio minio123')
+	s.send('mc config host add minio http://127.0.0.1:9000 minio minio123')
 	s.send('mc mb minio/images')
 	s.send('mc mb minio/thumbnail')
 	s.send('mc event add minio/images arn:minio:sqs::1:webhook --event put --suffix .jpg')
@@ -111,7 +112,8 @@ def do_knative_serving_example(s):
 
 ## HANDLERS BEGIN
 def handle_knative(s, ip_address, vultr_password):
-	setup_minikube(s)
+	global final_msg
+	install_minikube(s)
 	install_knative(s=s, ip_address=ip_address, vultr_password=vultr_password)
 	final_msg += 'knative set up and ready to use at: ' + ip_address + ', with root password: ' + vultr_password
 	q = 'Please choose an activity to perform'
