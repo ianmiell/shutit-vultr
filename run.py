@@ -3,9 +3,16 @@ import shutit
 import sys
 import pick
 
-## BEGIN CORE SETUP
+## BEGIN CORE SETUP
 def core_setup(s, vultr_password):
-	s.login(command='docker run -ti imiell/vultr-bare-metal bash')
+	if s.command_available('docker'):
+		s.login(command='docker run -ti imiell/vultr-bare-metal bash')
+	elif s.command_available('podman'):
+		s.login(command='podman run -ti imiell/vultr-bare-metal bash')
+	elif s.command_available('buildah'):
+		s.login(command='buildah -ti imiell/vultr-bare-metal bash')
+	else:
+		s.handle_exit(exit_code=1,msg='No command found to run image')
 	# regions baremetal is available: https://www.vultr.com/api/#plans_plan_list_baremetal
 	available_region = s.send_and_get_output('''curl -s https://api.vultr.com/v1/plans/list_baremetal | jq '.["100"]["available_locations"][]' | head -1''')
 	s.send('export TF_VAR_token=' + api_key)
@@ -22,7 +29,7 @@ def core_setup(s, vultr_password):
 	s.send('pip install shutit pygithub')
 	s.send('''echo 'export PATH=$PATH:/root/bin' >> /root/.bashrc''')
 	return ip_address
-## END CORE SETUP
+## END CORE SETUP
 
 ## BEGIN INSTALLS
 def install_knative(s, ip_address, vultr_password):
@@ -51,7 +58,7 @@ def install_kubebuilder(s):
 	s.send('''echo 'export PATH=$PATH:/usr/local/kubebuilder/bin' >> /root/.bashrc''')
 
 def install_kustomize(s):
-	# https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md
+	# https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md
 	s.send('cd /root')
 	s.send('opsys=linux')  # or darwin, or windows
 	s.send('''curl -s https://api.github.com/repos/kubernetes-sigs/kustomize/releases/latest | grep browser_download | grep $opsys |cut -d '"' -f 4 | xargs curl -O -L''')
@@ -60,9 +67,9 @@ def install_kustomize(s):
 
 def install_go(s):
 	s.send('cd /root')
-    s.send('wget https://dl.google.com/go/go1.12.7.linux-amd64.tar.gz')
-    s.send('tar -xvf go1.12.7.linux-amd64.tar.gz')
-    s.send('rm -f go1.12.7.linux-amd64.tar.gz')
+	s.send('wget https://dl.google.com/go/go1.12.7.linux-amd64.tar.gz')
+	s.send('tar -xvf go1.12.7.linux-amd64.tar.gz')
+	s.send('rm -f go1.12.7.linux-amd64.tar.gz')
 	s.send('export PATH=${PATH}:/root/go/bin')
 	s.send('''echo 'export PATH=${PATH}:/root/go/bin' >> /root/.bashrc''')
 
@@ -82,7 +89,7 @@ def install_knctl(s):
 	s.send('./hack/build.sh')
 ## INSTALLS DONE
 
-## BEGIN ACTIVITIES
+## BEGIN ACTIVITIES
 def do_knative_serving_example(s):
 	## Hello world: https://koudingspawn.de/knative-serving/
 	## Minio client
@@ -100,22 +107,22 @@ def do_knative_serving_example(s):
 	s.send('mc mb minio/images')
 	s.send('mc mb minio/thumbnail')
 	s.send('mc event add minio/images arn:minio:sqs::1:webhook --event put --suffix .jpg')
-## ACTIVITIES DONE
+## ACTIVITIES DONE
 
-## HANDLERS BEGIN
+## HANDLERS BEGIN
 def handle_knative(s, ip_address, vultr_password):
-		setup_minikube(s)
-		install_knative(s=s, ip_address=ip_address, vultr_password=vultr_password)
-		final_msg += 'knative set up and ready to use at: ' + ip_address + ', with root password: ' + vultr_password
-		q = 'Please choose an activity to perform'
-		knative_options = ['knative_serving_example',]
-		knative_option, _ = pick.pick(knative_options, q)
-		if knative_option == 'knative_serving_example':
-			do_knative_serving_example(s)
-		s.pause_point(final_msg)
-## HANDLERS DONE
+	setup_minikube(s)
+	install_knative(s=s, ip_address=ip_address, vultr_password=vultr_password)
+	final_msg += 'knative set up and ready to use at: ' + ip_address + ', with root password: ' + vultr_password
+	q = 'Please choose an activity to perform'
+	knative_options = ['knative_serving_example',]
+	knative_option, _ = pick.pick(knative_options, q)
+	if knative_option == 'knative_serving_example':
+		do_knative_serving_example(s)
+	s.pause_point(final_msg)
+## HANDLERS DONE
 
-## MAIN BEGIN
+## MAIN BEGIN
 def main():
 	# Pre-req check
 	try:
@@ -123,7 +130,7 @@ def main():
 	except:
 		print('VULTR_API_KEY must be set in the environment')
 		sys.exit(1)
-	# Constants
+	# Constants
 	vultr_password = 'vultr0987'
 	# Main choices begin
 	q = 'Please choose an env to build'
@@ -139,9 +146,9 @@ def main():
 	if env_option == 'knative':
 		handle_knative(s, ip_address, vultr_password)
 
-	# Clean up from core setup.
+	# Clean up from core setup.
 	s.logout()
 	s.logout()
-## MAIN DONE
+## MAIN DONE
 
 main()
