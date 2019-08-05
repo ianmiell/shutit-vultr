@@ -4,7 +4,7 @@ import sys
 import pick
 
 ## BEGIN CORE SETUP
-def core_setup(s, vultr_password):
+def core_setup(s, vultr_password, api_key):
 	if s.command_available('docker'):
 		s.login(command='docker run -ti imiell/vultr-bare-metal bash')
 	elif s.command_available('podman'):
@@ -140,7 +140,7 @@ def main():
 
 	# Create bash shell
 	s = shutit.create_session(loglevel='DEBUG', session_type='bash', echo=True)
-	ip_address = core_setup(s=s, vultr_password=vultr_password)
+	ip_address = core_setup(s=s, vultr_password=vultr_password, api_key=api_key)
 
 	# Process choices
 	if env_option == 'knative':
